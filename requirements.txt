@@ -1,0 +1,5 @@
+﻿boto3
+botocore
+rich
+paramiko
+scp
