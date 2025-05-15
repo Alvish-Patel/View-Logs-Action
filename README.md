@@ -1,62 +1,83 @@
-# SRE-Jarvis Project Setup on Ubuntu machine
+# SRE-Jarvis CLI Tool
+
+A powerful CLI tool to manage Confluence server operations like heap dumps, service restarts, and log viewing with ease and automation.
+
+---
+
+## Features
+
+### ✅ Confluence Module
+
+- **heapdump.py**  
+  Captures heap dumps from remote Confluence EC2 instances for troubleshooting memory issues.
+
+- **restart.py**  
+  Restarts the Confluence service on remote EC2 instances to apply changes or recover from failures.
+
+- **view_logs.py**  
+  Fetches and displays Confluence logs remotely. Allows tailing logs or downloading full log files for analysis.
+
+### Other Modules
+
+- Module 2 Name  
+- Module 3 Name  
+- Module 4 Name  
+
+---
 
 ## Prerequisites
 
-Before starting the setup process, ensure you have the following:
-
-## Step-by-Step Installation Guide
-
-1. Make the setup.sh Script Executable:
-Navigate to the project directory and ensure that the setup.sh script has execute permissions: 
-
-## RUN THIS COMMAND --> chmod +x setup.sh
-
------------------
-
-2. Run the setup.sh Script:
-Now, you can run the setup script to automatically install all the necessary dependencies and set up the environment: 
-
-## RUN THIS COMMAND --> ./setup.sh
-
------------------
-
-3. Run the CLI Tool:
-After running setup.sh, the main CLI tool (main.py) will automatically start. To run the tool manually at any point, use:
-
-## RUN THIS COMMAND --> python3 main.py
-
-----------------------------------------------------
-
-# SRE-Jarvis Project Setup on Windows machine
-
-## Prerequisites
-
-Before starting the setup process, ensure you have the following installed:
-
--  Python 3 (add to PATH during installation)
--  PowerShell (comes pre-installed)
+- Python 3.8 or higher must be installed on your system.
+- You must have SSH access and proper AWS profile setup to connect to EC2 instances remotely.
 
 ---
 
 ## Step-by-Step Installation Guide
 
-### 1. Allow PowerShell Script Execution:
+### 1. Install Python
 
-Run PowerShell **as Administrator** and enable script execution:
+If you don't have Python installed on your system, install Python 3.8+ using the following commands:
 
-## RUN THIS COMMAND on powershell➜
-Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```bash
+sudo apt update
+sudo apt install python3
 
------------------
+### 2. Install pip (Python Package Installer)
 
-2. Run the setup.ps1 Script:
-Now, you can run the setup script to automatically install all the necessary dependencies and set up the environment: 
+If pip is not installed, Install pip to manage Python packages:
 
-## RUN THIS COMMAND --> .\setup.ps1
+```bash
+sudo apt install python3-pip
 
------------------
+### 3. Install Dependencies
 
-3. Run the CLI Tool:
-After running setup.ps1, the main CLI tool (main.py) will automatically start. To run the tool manually at any point, use:
+Once you have Python and pip ready, navigate to the project root folder and install the required dependencies: (cd /path/to/your/project/SRE-Jarvis)
 
-## RUN THIS COMMAND --> python3 main.py
+```bash
+pip install .
+
+### 4. Run the CLI Tool
+
+Run the main CLI entry point with:
+
+```bash
+python3 main.py
+
+
+Ensure your AWS CLI profiles are properly configured for EC2 instance access.
+
+Make sure you have the required SSH or .pem keys and permissions set up for remote connections.
+
+### Configuration Setup (Optional)
+
+Before running the tool, update the configuration file to match your environment.
+
+Edit the `config.py` file located in the project root directory. Here's what each setting means:
+
+### AWS Configuration
+
+```python
+AWS_PROFILE = "your-AWS-profile-name"     # Name of your AWS CLI profile 
+AWS_REGION = "us-east-1"                  # AWS region where your EC2 
+S3_BUCKET_NAME = "your-s3-bucket-name"     # Name of your S3 bucket for heap dump uploads
+

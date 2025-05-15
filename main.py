@@ -12,11 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent
 PLUGINS_PATH = BASE_DIR / "plugins"
 LOGS_DIR = BASE_DIR / "logs"
 
-# Add plugins path to sys.path for dynamic imports
 if str(PLUGINS_PATH) not in sys.path:
     sys.path.insert(0, str(PLUGINS_PATH))
 
-# Setup logging only to file (no console)
 LOGS_DIR.mkdir(exist_ok=True)
 log_file = LOGS_DIR / f"jarvis_{datetime.now().strftime('%Y-%m-%d')}.log"
 
@@ -94,8 +92,14 @@ def main():
         if choice.isdigit() and 1 <= int(choice) <= len(modules):
             module_name = modules[int(choice) - 1]
             logging.info(f"User selected main module: {module_name}")
+
+            sub_files = get_module_files(module_name)
+            if not sub_files:
+                console.print(f"\n[bold yellow]⚠️ This feature is not yet implemented.[/bold yellow]")
+                input("Press Enter to return to the main menu...")
+                continue 
+
             while True:
-                sub_files = get_module_files(module_name)
                 console.clear()
                 show_sub_menu(module_name, sub_files)
                 sub_choice = Prompt.ask("\nSelect a sub-option")
@@ -114,4 +118,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
