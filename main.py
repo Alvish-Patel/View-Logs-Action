@@ -1,4 +1,3 @@
-import os
 import sys
 import logging
 import importlib
@@ -7,8 +6,6 @@ from datetime import datetime
 from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
-
-
 
 BASE_DIR = Path(__file__).resolve().parent
 PLUGINS_PATH = BASE_DIR / "plugins"
@@ -22,7 +19,6 @@ log_file = LOGS_DIR / f"jarvis_{datetime.now().strftime('%Y-%m-%d')}.log"
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
 file_handler = logging.FileHandler(log_file)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
@@ -32,11 +28,13 @@ logging.info("SRE-Jarvis started")
 
 console = Console()
 
+
 def get_main_modules():
     return sorted([
         f.name for f in PLUGINS_PATH.iterdir()
         if f.is_dir() and not f.name.startswith("__") and not f.name.startswith(".")
     ])
+
 
 def get_module_files(module_name):
     module_path = PLUGINS_PATH / module_name
@@ -45,8 +43,9 @@ def get_module_files(module_name):
         if f.is_file() and f.name != "__init__.py"
     ])
 
+
 def show_main_menu(modules):
-    table = Table(title="SRE-Jarvis Main Menu", header_style="bold magenta")
+    table = Table(title="🤖 SRE-Jarvis Main Menu", header_style="bold magenta")
     table.add_column("Option", justify="center")
     table.add_column("Module")
 
@@ -57,8 +56,9 @@ def show_main_menu(modules):
     console.clear()
     console.print(table)
 
+
 def show_sub_menu(module_name, files):
-    table = Table(title=f"{module_name.capitalize()} Submenu", header_style="bold cyan")
+    table = Table(title=f"🔧 {module_name.capitalize()} Submenu", header_style="bold cyan")
     table.add_column("Option", justify="center")
     table.add_column("Action")
 
@@ -68,6 +68,7 @@ def show_sub_menu(module_name, files):
 
     console.print(table)
 
+
 def load_and_run(module, file):
     try:
         logging.info(f"Executing {module} > {file}")
@@ -76,10 +77,12 @@ def load_and_run(module, file):
             imported.run()
         else:
             logging.warning(f"No 'run()' function in {module}.{file}")
+            console.print(f"[yellow]⚠️ The file '{file}.py' does not contain a run() function.[/yellow]")
     except Exception as e:
         logging.error(f"Error in {module}.{file}: {e}")
-        console.print(f"[bold red]Error:[/bold red] {e}")
-    input("Press Enter to return to the submenu...")
+        console.print(f"[bold red]❌ Error:[/bold red] {e}")
+    input("\nPress Enter to return to the submenu...")
+
 
 def main():
     while True:
@@ -89,6 +92,7 @@ def main():
 
         if choice == "0":
             logging.info("User exited the program.")
+            console.print("\n[green]👋 Exiting SRE-Jarvis. Have a nice day![/green]")
             break
 
         if choice.isdigit() and 1 <= int(choice) <= len(modules):
@@ -97,9 +101,9 @@ def main():
 
             sub_files = get_module_files(module_name)
             if not sub_files:
-                console.print(f"\n[bold yellow]⚠️ This feature is not yet implemented.[/bold yellow]")
+                console.print("\n[bold yellow]⚠️ This feature is not yet implemented.[/bold yellow]")
                 input("Press Enter to return to the main menu...")
-                continue 
+                continue
 
             while True:
                 console.clear()
@@ -117,6 +121,7 @@ def main():
                     console.print("[red]Invalid sub-option. Try again.[/red]")
         else:
             console.print("[red]Invalid main option. Try again.[/red]")
+
 
 if __name__ == "__main__":
     main()
