@@ -8,6 +8,8 @@ from rich.console import Console
 from rich.table import Table
 from rich.prompt import Prompt
 
+
+
 BASE_DIR = Path(__file__).resolve().parent
 PLUGINS_PATH = BASE_DIR / "plugins"
 LOGS_DIR = BASE_DIR / "logs"

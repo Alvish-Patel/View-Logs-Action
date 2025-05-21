@@ -1,169 +1,421 @@
+
 import boto3
+import sys
+import os
 import paramiko
+from paramiko import SSHClient, AutoAddPolicy, ProxyCommand
 from rich.console import Console
 from rich.prompt import Prompt
-from botocore.exceptions import ProfileNotFound
-import os
-import configparser
 
 console = Console()
 
-# 🔸 Reusable AWS profile logic from restart.py
+LOG_PATHS = {
+    "Confluence": [
+        "/opt/Confluence/logs/catalina.out",
+        "/var/log/confluence/confluence.log",
+        "/var/log/messages",
+    ],
+    "Jira": [
+        "/opt/Jira/logs/atlassian-jira.log",
+        "/var/log/jira/jira.log",
+    ],
+    "Custom": []
+}
 
-def list_existing_profiles():
-    credentials_config = configparser.ConfigParser()
-    credentials_config.read(os.path.expanduser("~/.aws/credentials"))
+def choose_aws_profile():
+    session = boto3.Session()
+    profiles = session.available_profiles
+    if not profiles:
+        console.print("[red]No AWS profiles found! Configure AWS CLI profiles first.[/red]")
+        sys.exit(1)
 
-    config_config = configparser.ConfigParser()
-    config_config.read(os.path.expanduser("~/.aws/config"))
+    print("\n📜 AWS Profile Setup\n")
+    print("Available AWS Profiles:")
+    for idx, profile in enumerate(profiles, 1):
+        print(f"  {idx}. {profile}")
+    print()
+    choice = input("Select AWS profile number or press Enter to add new AWS account: ").strip()
 
-    valid_profiles = []
-    for profile in credentials_config.sections():
-        config_section = f"profile {profile}" if profile != "default" else "default"
-        if config_section in config_config and "region" in config_config[config_section]:
-            valid_profiles.append(profile)
-    return valid_profiles
-
-def prompt_for_aws_configuration():
-    console.print("\n[red]❌ AWS credentials or region not found. Please configure them first.[/red]")
-    profile_name = Prompt.ask("Enter a profile name (e.g. dev, prod)").strip()
-    aws_access_key_id = Prompt.ask("Enter AWS Access Key ID").strip()
-    aws_secret_access_key = Prompt.ask("Enter AWS Secret Access Key").strip()
-    aws_region = Prompt.ask("Enter AWS Region (e.g. us-west-2)").strip()
-
-    aws_credentials_dir = os.path.expanduser("~/.aws")
-    os.makedirs(aws_credentials_dir, exist_ok=True)
-
-    credentials_path = os.path.join(aws_credentials_dir, "credentials")
-    credentials_config = configparser.ConfigParser()
-    credentials_config.read(credentials_path)
-    credentials_config[profile_name] = {
-        "aws_access_key_id": aws_access_key_id,
-        "aws_secret_access_key": aws_secret_access_key
-    }
-    with open(credentials_path, "w") as f:
-        credentials_config.write(f)
-
-    config_path = os.path.join(aws_credentials_dir, "config")
-    config = configparser.ConfigParser()
-    config.read(config_path)
-    config[f"profile {profile_name}"] = {"region": aws_region}
-    with open(config_path, "w") as f:
-        config.write(f)
-
-    console.print("\n[green]✅ AWS credentials and region have been configured.[/green]")
-    input("Press Enter to continue...")
-    return profile_name
-
-def choose_profile():
-    profiles = list_existing_profiles()
-    if profiles:
-        console.print("\n[bold yellow]Available AWS Profiles:[/bold yellow]")
-        for i, profile in enumerate(profiles, 1):
-            console.print(f"  {i}. {profile}")
-        choice = Prompt.ask("\nSelect AWS profile number or press Enter to add new AWS account").strip()
-        if choice.isdigit() and 1 <= int(choice) <= len(profiles):
-            return profiles[int(choice) - 1]
-        else:
-            return prompt_for_aws_configuration()
+    if choice == "":
+        # User wants to add a new profile (handle accordingly or exit)
+        console.print("[yellow]Add new AWS account functionality not implemented yet.[/yellow]")
+        sys.exit(0)
+    elif choice.isdigit() and 1 <= int(choice) <= len(profiles):
+        selected_profile = profiles[int(choice) - 1]
+        console.print(f"Selected AWS profile: [green]{selected_profile}[/green]")
+        return selected_profile
     else:
-        return prompt_for_aws_configuration()
+        console.print("[red]Invalid selection![/red]")
+        sys.exit(1)
 
-# 🔸 Existing logic
-
-def get_instances(profile):
+def get_ec2_instances(profile):
+    session = boto3.Session(profile_name=profile)
+    ec2 = session.client("ec2")
     try:
-        session = boto3.Session(profile_name=profile)
-        ec2 = session.client("ec2")
-        response = ec2.describe_instances()
-        instances = []
-        for resv in response["Reservations"]:
-            for inst in resv["Instances"]:
-                if inst["State"]["Name"] == "running":
-                    name = "-"
-                    for tag in inst.get("Tags", []):
-                        if tag["Key"] == "Name":
-                            name = tag["Value"]
-                    instance_id = inst["InstanceId"]
-                    instances.append((name, instance_id))
-        return instances
-    except ProfileNotFound:
-        console.print(f"[red]❌ AWS profile '{profile}' not found.[/red]")
-        return []
-
-def ssh_and_fetch_logs(instance_ip, pem_file_path, log_path, user="ubuntu"):
-    local_download_path = f"/tmp/{log_path.split('/')[-1]}"
-    try:
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(instance_ip, username=user, key_filename=pem_file_path)
-        console.print(f"[green]✅ Connected to {instance_ip}[/green]")
-
-        # Fetch and print last 25 lines
-        console.print(f"\n[cyan]🔍 Showing last 25 lines of:[/cyan] [bold]{log_path}[/bold]\n")
-        stdin, stdout, stderr = ssh.exec_command(f"tail -n 25 {log_path}")
-        output = stdout.read().decode()
-        error = stderr.read().decode()
-
-        if output:
-            console.print(output)
-        elif error:
-            console.print(f"[red]❌ Error reading log file:[/red] {error.strip()}")
-            return
-        else:
-            console.print("[yellow]⚠️ Log file is empty or path is incorrect.[/yellow]")
-            return
-
-        # Download full log
-        ftp_client = ssh.open_sftp()
-        ftp_client.get(log_path, local_download_path)
-        ftp_client.close()
-        ssh.close()
-
-        console.print(f"\n[green]✅ Full log downloaded to: {local_download_path}[/green]")
-
-    except paramiko.AuthenticationException as auth_error:
-        console.print(f"[red]❌ Authentication failed.[/red] {auth_error}")
-    except FileNotFoundError:
-        console.print(f"[red]❌ Log file not found: {log_path}[/red]")
+        response = ec2.describe_instances(
+            Filters=[{"Name": "instance-state-name", "Values": ["running"]}]
+        )
     except Exception as e:
-        console.print(f"[red]❌ Error during SSH or file download:[/red] {e}")
+        console.print(f"[red]Failed to describe instances: {e}[/red]")
+        sys.exit(1)
+
+    instances = []
+    for reservation in response.get("Reservations", []):
+        for instance in reservation.get("Instances", []):
+            name = "-"
+            for tag in instance.get("Tags", []):
+                if tag["Key"] == "Name":
+                    name = tag["Value"]
+            instances.append({
+                "InstanceId": instance.get("InstanceId", "-"),
+                "Name": name,
+                "PublicIp": instance.get("PublicIpAddress", "-"),
+                "PrivateIp": instance.get("PrivateIpAddress", "-"),
+            })
+    return instances
+
+def display_instances(instances):
+    console.print("\nRunning EC2 Instances:")
+    for idx, inst in enumerate(instances, 1):
+        console.print(f"  {idx}. {inst['InstanceId']} - {inst['Name']} ({inst['PublicIp']})")
+
+def choose_instance(instances):
+    choice = input("\nSelect instance to connect (number): ").strip()
+    if choice.isdigit() and 1 <= int(choice) <= len(instances):
+        return instances[int(choice) - 1]
+    else:
+        console.print("[red]Invalid selection![/red]")
+        sys.exit(1)
+
+def choose_service_log_path():
+    services = list(LOG_PATHS.keys())
+    console.print("\nAvailable services for logs:")
+    for idx, svc in enumerate(services, 1):
+        console.print(f"  {idx}. {svc}")
+
+    choice = input("Select service log paths (number): ").strip()
+    if choice.isdigit() and 1 <= int(choice) <= len(services):
+        selected_service = services[int(choice) - 1]
+        if selected_service == "Custom":
+            path = input("Enter full remote log file path: ").strip()
+            if path == "":
+                console.print("[red]Log path cannot be empty![/red]")
+                sys.exit(1)
+            return path
+        else:
+            paths = LOG_PATHS[selected_service]
+            console.print(f"\nSelect log file path for {selected_service}:")
+            for idx, p in enumerate(paths, 1):
+                console.print(f"  {idx}. {p}")
+            path_choice = input("Select log path (number): ").strip()
+            if path_choice.isdigit() and 1 <= int(path_choice) <= len(paths):
+                return paths[int(path_choice) - 1]
+            else:
+                console.print("[red]Invalid selection![/red]")
+                sys.exit(1)
+    else:
+        console.print("[red]Invalid selection![/red]")
+        sys.exit(1)
+
+def get_jumphost(instances):
+    for inst in instances:
+        if "jump" in inst["Name"].lower():
+            return inst
+    return None
+
+def create_ssh_client(hostname, username, pem_path, jumphost=None):
+    try:
+        key = paramiko.RSAKey.from_private_key_file(pem_path)
+    except Exception as e:
+        console.print(f"[red]Failed to load PEM key: {e}[/red]")
+        sys.exit(1)
+
+    client = SSHClient()
+    client.set_missing_host_key_policy(AutoAddPolicy())
+
+    try:
+        if jumphost:
+            jumphost_ip = jumphost["PublicIp"]
+            if jumphost_ip == "-" or not jumphost_ip:
+                console.print("[red]Jumphost does not have a public IP! Cannot use jumphost.[/red]")
+                sys.exit(1)
+            proxy_cmd = f"ssh -i {pem_path} -W {hostname}:22 ubuntu@{jumphost_ip}"
+            proxy = ProxyCommand(proxy_cmd)
+            client.connect(hostname=hostname, username=username, pkey=key, sock=proxy, timeout=10)
+        else:
+            client.connect(hostname=hostname, username=username, pkey=key, timeout=10)
+    except Exception as e:
+        console.print(f"[red]SSH connection failed: {e}[/red]")
+        sys.exit(1)
+
+    return client
+
+def tail_remote_log(ssh_client, remote_path, lines=25):
+    cmd = f"tail -n {lines} {remote_path}"
+    try:
+        stdin, stdout, stderr = ssh_client.exec_command(cmd)
+        error = stderr.read().decode()
+        if error:
+            return None, error.strip()
+        output = stdout.read().decode()
+        return output, None
+    except Exception as e:
+        return None, str(e)
+
+def download_remote_log(ssh_client, remote_path, local_path):
+    try:
+        sftp = ssh_client.open_sftp()
+        sftp.get(remote_path, local_path)
+        sftp.close()
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 def run():
-    console.print("[bold yellow]📜 AWS Profile Setup[/bold yellow]")
-    profile = choose_profile()
-
-    instances = get_instances(profile)
+    profile = choose_aws_profile()
+    instances = get_ec2_instances(profile)
     if not instances:
-        console.print("[red]No running EC2 instances found.[/red]")
-        return
+        console.print("[red]No running instances found![/red]")
+        sys.exit(1)
 
-    console.print("\n[bold cyan]Available Running EC2 Instances:[/bold cyan]")
-    for idx, (name, instance_id) in enumerate(instances, start=1):
-        console.print(f"{idx}. {name} ({instance_id})")
+    display_instances(instances)
+    selected_instance = choose_instance(instances)
 
-    instance_choice = Prompt.ask("\nSelect the instance number to fetch logs from")
+    jumphost = get_jumphost(instances)
+    use_jumphost = False
+    if jumphost and jumphost["InstanceId"] != selected_instance["InstanceId"]:
+        console.print(f"\nJumphost detected: [cyan]{jumphost['Name']} ({jumphost['PublicIp']})[/cyan]")
+        use_jumphost = True
+
+    username = input("Enter SSH username (default: ubuntu): ").strip()
+    if not username:
+        username = "ubuntu"
+
+    pem_path = input("Enter path to PEM key file (e.g. ~/.ssh/id_rsa.pem): ").strip()
+    pem_path = os.path.expanduser(pem_path)
+    if not os.path.isfile(pem_path):
+        console.print(f"[red]PEM key file does not exist: {pem_path}[/red]")
+        sys.exit(1)
+
+    remote_log_path = choose_service_log_path()
+
+    console.print(f"\nConnecting to instance [green]{selected_instance['InstanceId']}[/green] ({selected_instance['PrivateIp']})...")
+    ssh_client = None
     try:
-        selected_instance = instances[int(instance_choice) - 1]
-    except (ValueError, IndexError):
-        console.print("[red]Invalid instance selection.[/red]")
-        return
+        if use_jumphost:
+            console.print(f"Using jumphost {jumphost['PublicIp']} to connect to private instance {selected_instance['PrivateIp']}...")
+            ssh_client = create_ssh_client(
+                hostname=selected_instance["PrivateIp"],
+                username=username,
+                pem_path=pem_path,
+                jumphost=jumphost,
+            )
+        else:
+            target_ip = selected_instance["PublicIp"] if selected_instance["PublicIp"] != "-" else selected_instance["PrivateIp"]
+            ssh_client = create_ssh_client(
+                hostname=target_ip,
+                username=username,
+                pem_path=pem_path,
+                jumphost=None,
+            )
+    except Exception as e:
+        console.print(f"[red]Failed to establish SSH connection: {e}[/red]")
+        sys.exit(1)
 
-    _, instance_id = selected_instance
+    console.print(f"\nFetching last 25 lines of log file: [cyan]{remote_log_path}[/cyan]\n")
+    output, error = tail_remote_log(ssh_client, remote_log_path, 25)
+    if error:
+        console.print(f"[red]Error reading remote log file: {error}[/red]")
+    else:
+        console.print(output)
+
+    download_choice = input("Download full log file? (y/n, default n): ").strip().lower()
+    if download_choice == "y":
+        local_filename = os.path.basename(remote_log_path)
+        local_path = os.path.join(os.getcwd(), local_filename)
+        console.print(f"Downloading full log to: [green]{local_path}[/green]")
+        success, dl_error = download_remote_log(ssh_client, remote_log_path, local_path)
+        if success:
+            console.print("[green]Download completed successfully.[/green]")
+        else:
+            console.print(f"[red]Failed to download log file: {dl_error}[/red]")
+    ssh_client.close()
+# (Continuation from the last chunk)
+
+def get_ec2_instances(profile):
     session = boto3.Session(profile_name=profile)
-    ec2 = session.resource("ec2")
-    instance = ec2.Instance(instance_id)
-    ip_address = instance.public_ip_address
+    ec2 = session.client("ec2")
+    try:
+        response = ec2.describe_instances(
+            Filters=[{"Name": "instance-state-name", "Values": ["running"]}]
+        )
+    except Exception as e:
+        console.print(f"[red]Failed to describe instances: {e}[/red]")
+        sys.exit(1)
 
-    if not ip_address:
-        console.print("[red]❌ Instance does not have a public IP address.[/red]")
-        return
+    instances = []
+    for reservation in response["Reservations"]:
+        for instance in reservation["Instances"]:
+            name = "-"
+            if "Tags" in instance:
+                for tag in instance["Tags"]:
+                    if tag["Key"] == "Name":
+                        name = tag["Value"]
+            instances.append({
+                "InstanceId": instance["InstanceId"],
+                "Name": name,
+                "PublicIp": instance.get("PublicIpAddress", "-"),
+                "PrivateIp": instance.get("PrivateIpAddress", "-"),
+            })
+    return instances
 
-    pem_path = Prompt.ask("Enter path to the PEM key file")
-    user = Prompt.ask("Enter the username (default: 'ubuntu')", default="ubuntu")
-    log_path = Prompt.ask("Enter full log file path (e.g. /opt/atlassian/confluence/logs/atlassian-confluence.log)")
+def display_instances(instances):
+    console.print("\nRunning EC2 Instances:")
+    for idx, inst in enumerate(instances, 1):
+        console.print(f"  {idx}. {inst['Name']} (ID: {inst['InstanceId']}), Public IP: {inst['PublicIp']}")
 
-    ssh_and_fetch_logs(ip_address, pem_path, log_path, user)
+def choose_instance(instances):
+    choices = [str(i) for i in range(1, len(instances) + 1)]
+    choice = Prompt.ask("Select instance to connect (number)", choices=choices)
+    return instances[int(choice) - 1]
 
-if __name__ == "__main__":
-    run()
+def choose_service_log_path():
+    console.print("\nAvailable services for logs:")
+    services = list(LOG_PATHS.keys())
+    for idx, svc in enumerate(services, 1):
+        console.print(f"  {idx}. {svc}")
+
+    choice = Prompt.ask("Select service log paths (number)", choices=[str(i) for i in range(1, len(services) + 1)])
+    selected_service = services[int(choice) - 1]
+
+    if selected_service == "Custom":
+        path = Prompt.ask("Enter full remote log file path")
+        return path
+    else:
+        paths = LOG_PATHS[selected_service]
+        console.print(f"Select log file path for {selected_service}:")
+        for idx, p in enumerate(paths, 1):
+            console.print(f"  {idx}. {p}")
+        path_choice = Prompt.ask("Select log path (number)", choices=[str(i) for i in range(1, len(paths) + 1)])
+        return paths[int(path_choice) - 1]
+
+def get_jumphost(instances):
+    for inst in instances:
+        if "jump" in inst["Name"].lower():
+            return inst
+    return None
+
+def create_ssh_client(hostname, username, pem_path, jumphost=None):
+    try:
+        key = paramiko.RSAKey.from_private_key_file(pem_path)
+    except Exception as e:
+        console.print(f"[red]Failed to load PEM key: {e}[/red]")
+        sys.exit(1)
+
+    client = SSHClient()
+    client.set_missing_host_key_policy(AutoAddPolicy())
+
+    try:
+        if jumphost:
+            jumphost_ip = jumphost["PublicIp"]
+            if jumphost_ip == "-" or not jumphost_ip:
+                console.print("[red]Jumphost does not have a public IP! Cannot use jumphost.[/red]")
+                sys.exit(1)
+            proxy_cmd = f"ssh -i {pem_path} -W {hostname}:22 ubuntu@{jumphost_ip}"
+            proxy = ProxyCommand(proxy_cmd)
+            client.connect(hostname=hostname, username=username, pkey=key, sock=proxy, timeout=10)
+        else:
+            client.connect(hostname=hostname, username=username, pkey=key, timeout=10)
+    except Exception as e:
+        console.print(f"[red]SSH connection failed: {e}[/red]")
+        sys.exit(1)
+
+    return client
+
+def tail_remote_log(ssh_client, remote_path, lines=25):
+    cmd = f"tail -n {lines} {remote_path}"
+    try:
+        stdin, stdout, stderr = ssh_client.exec_command(cmd)
+        error = stderr.read().decode()
+        if error:
+            return None, error.strip()
+        output = stdout.read().decode()
+        return output, None
+    except Exception as e:
+        return None, str(e)
+
+def download_remote_log(ssh_client, remote_path, local_path):
+    try:
+        sftp = ssh_client.open_sftp()
+        sftp.get(remote_path, local_path)
+        sftp.close()
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+def run():
+    profile = choose_aws_profile()
+    instances = get_ec2_instances(profile)
+    if not instances:
+        console.print("[red]No running instances found![/red]")
+        sys.exit(1)
+
+    display_instances(instances)
+    selected_instance = choose_instance(instances)
+
+    jumphost = get_jumphost(instances)
+    use_jumphost = False
+    if jumphost and jumphost["InstanceId"] != selected_instance["InstanceId"]:
+        console.print(f"Jumphost detected: [cyan]{jumphost['Name']} ({jumphost['PublicIp']})[/cyan]")
+        use_jumphost = True
+
+    username = Prompt.ask("Enter SSH username", default="ubuntu")
+    pem_path = Prompt.ask("Enter path to PEM key file (e.g. ~/.ssh/id_rsa.pem)")
+    pem_path = os.path.expanduser(pem_path)
+    if not os.path.isfile(pem_path):
+        console.print(f"[red]PEM key file does not exist: {pem_path}[/red]")
+        sys.exit(1)
+
+    remote_log_path = choose_service_log_path()
+
+    console.print(f"\nConnecting to instance [green]{selected_instance['InstanceId']}[/green] ({selected_instance['PrivateIp']})...")
+    ssh_client = None
+    try:
+        if use_jumphost:
+            console.print(f"Using jumphost {jumphost['PublicIp']} to connect to private instance {selected_instance['PrivateIp']}...")
+            ssh_client = create_ssh_client(
+                hostname=selected_instance["PrivateIp"],
+                username=username,
+                pem_path=pem_path,
+                jumphost=jumphost,
+            )
+        else:
+            target_ip = selected_instance["PublicIp"] if selected_instance["PublicIp"] != "-" else selected_instance["PrivateIp"]
+            ssh_client = create_ssh_client(
+                hostname=target_ip,
+                username=username,
+                pem_path=pem_path,
+                jumphost=None,
+            )
+    except Exception as e:
+        console.print(f"[red]Failed to establish SSH connection: {e}[/red]")
+        sys.exit(1)
+
+    console.print(f"\nFetching last 25 lines of log file: [cyan]{remote_log_path}[/cyan]\n")
+    output, error = tail_remote_log(ssh_client, remote_log_path, 25)
+    if error:
+        console.print(f"[red]Error reading remote log file: {error}[/red]")
+    else:
+        console.print(output)
+
+    download_choice = Prompt.ask("Download full log file? (y/n)", choices=["y", "n"], default="n")
+    if download_choice == "y":
+        local_filename = os.path.basename(remote_log_path)
+        local_path = os.path.join(os.getcwd(), local_filename)
+        console.print(f"Downloading full log to: [green]{local_path}[/green]")
+        success, dl_error = download_remote_log(ssh_client, remote_log_path, local_path)
+        if success:
+            console.print("[green]Download completed successfully.[/green]")
+        else:
+            console.print(f"[red]Failed to download log file: {dl_error}[/red]")
+    ssh_client.close()

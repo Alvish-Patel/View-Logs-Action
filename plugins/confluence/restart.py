@@ -9,7 +9,6 @@ from rich.text import Text
 
 console = Console()
 
-# Setup logging with dynamic log file location
 def setup_logging(log_file_path=None):
     if not log_file_path:
         log_file_path = os.path.expanduser("~/.sre-jarvis/logs/main.log")
