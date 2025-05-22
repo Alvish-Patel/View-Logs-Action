@@ -3,7 +3,7 @@ import subprocess
 from setuptools import setup, find_packages
 from pathlib import Path
 
-# Check if Python is installed
+
 def check_python():
     if sys.version_info < (3, 8):
         print("Python 3.8 or higher is required. Please install it.")
@@ -11,7 +11,6 @@ def check_python():
 
 check_python()
 
-# Read the README file
 this_directory = Path(__file__).parent
 long_description = ""
 readme_path = this_directory / "README.md"
@@ -36,7 +35,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'sre-jarvis=main:main'  # Ensure main.py has def main(): ...
+            'sre-jarvis=main:main'  
         ],
     },
     classifiers=[
@@ -46,7 +45,7 @@ setup(
     python_requires='>=3.8',
 )
 
-# Check if pip is installed, and install if necessary
+
 def check_pip():
     try:
         subprocess.check_call([sys.executable, "-m", "pip", "--version"])

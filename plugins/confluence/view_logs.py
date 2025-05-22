@@ -21,6 +21,7 @@ LOG_PATHS = {
     "Custom": []  # Allows users to specify a custom log path
 }
 
+
 def choose_aws_profile():
     session = boto3.Session()
     profiles = session.available_profiles
@@ -45,6 +46,7 @@ def choose_aws_profile():
     else:
         console.print("[red]Invalid selection![/red]")
         sys.exit(1)
+
 
 def get_ec2_instances(profile):
     session = boto3.Session(profile_name=profile)
@@ -72,10 +74,12 @@ def get_ec2_instances(profile):
             })
     return instances
 
+
 def display_instances(instances):
     console.print("\nRunning EC2 Instances:")
     for idx, inst in enumerate(instances, 1):
         console.print(f"  {idx}. {inst['InstanceId']} - {inst['Name']} ({inst['PublicIp']})")
+
 
 def choose_instance(instances):
     choice = input("\nSelect instance to connect (number): ").strip()
@@ -84,6 +88,7 @@ def choose_instance(instances):
     else:
         console.print("[red]Invalid selection![/red]")
         sys.exit(1)
+
 
 def choose_service_log_path():
     services = list(LOG_PATHS.keys())
@@ -115,11 +120,13 @@ def choose_service_log_path():
         console.print("[red]Invalid selection![/red]")
         sys.exit(1)
 
+
 def get_jumphost(instances):
     for inst in instances:
         if "jump" in inst["Name"].lower():
             return inst
     return None
+
 
 def create_ssh_client(hostname, username, pem_path, jumphost=None):
     try:
@@ -148,6 +155,7 @@ def create_ssh_client(hostname, username, pem_path, jumphost=None):
 
     return client
 
+
 def tail_remote_log(ssh_client, remote_path, lines=25):
     cmd = f"tail -n {lines} {remote_path}"
     try:
@@ -160,6 +168,7 @@ def tail_remote_log(ssh_client, remote_path, lines=25):
     except Exception as e:
         return None, str(e)
 
+
 def download_remote_log(ssh_client, remote_path, local_path):
     try:
         sftp = ssh_client.open_sftp()
@@ -168,6 +177,7 @@ def download_remote_log(ssh_client, remote_path, local_path):
         return True, None
     except Exception as e:
         return False, str(e)
+
 
 def run():
     profile = choose_aws_profile()
@@ -238,6 +248,7 @@ def run():
             console.print(f"[red]Failed to download log file: {err}[/red]")
 
     ssh_client.close()
+
 
 if __name__ == "__main__":
     run()
