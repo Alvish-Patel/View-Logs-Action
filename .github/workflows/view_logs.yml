@@ -16,27 +16,20 @@ jobs:
 
       - name: 🔐 Save private key to file
         run: |
-          printf '%s\n' "${{ secrets.PRIVATE_KEY }}" > private_key.pem
+          echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
-
-      - name: 🧠 Debug secrets (optional)
-        run: |
-          echo "👤 EC2_USER: $EC2_USER"
-          echo "🌐 EC2_HOST: $EC2_HOST"
-          echo "📄 LOG_PATH: $LOG_PATH"
-        env:
-          EC2_USER: ${{ secrets.EC2_USER }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          LOG_PATH: ${{ secrets.LOG_PATH }}
 
       - name: 📡 SSH into EC2 and view logs
         run: |
           echo "Running: ssh -i private_key.pem $EC2_USER@$EC2_HOST 'tail -n 25 $LOG_PATH'"
-          ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST "tail -n 25 '$LOG_PATH'" || {
-            echo "❌ SSH failed. Check key format, user, or permissions."; exit 1;
-          }
+          ssh -o StrictHostKeyChecking=no -i private_key.pem $EC2_USER@$EC2_HOST "tail -n 25 '$LOG_PATH'" > ec2_logs.txt
         env:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           LOG_PATH: ${{ secrets.LOG_PATH }}
 
+      - name: 📦 Upload log as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-log
+          path: ec2_logs.txt
