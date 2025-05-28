@@ -20,7 +20,7 @@ jobs:
     needs: pre-approval-steps
     runs-on: ubuntu-latest
     environment:
-      name: manual-approval  # 👈 Approval will be required before this job
+      name: manual-approval 
     steps:
       - name: ✅ Final success message
         run: echo "✅ Build approved and completed successfully!"
