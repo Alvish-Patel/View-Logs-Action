@@ -5,11 +5,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  view-logs:
+  pre-approval-steps:
     runs-on: ubuntu-latest
-    environment:
-      name: manual-approval  
-
     steps:
       - name: 🧾 Checkout code
         uses: actions/checkout@v3
@@ -19,5 +16,11 @@ jobs:
           echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
+  approve-and-complete:
+    needs: pre-approval-steps
+    runs-on: ubuntu-latest
+    environment:
+      name: manual-approval  # 👈 Approval will be required before this job
+    steps:
       - name: ✅ Final success message
         run: echo "✅ Build approved and completed successfully!"
