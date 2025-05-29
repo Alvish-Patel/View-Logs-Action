@@ -13,7 +13,7 @@ jobs:
         id: set-result
         run: |
           # Change this to true/false based on your condition
-          echo "proceed=false" >> $GITHUB_ENV
+          echo "proceed=true" >> $GITHUB_ENV
           echo "::set-output name=proceed::false"
 
   approve:
