@@ -12,13 +12,8 @@ jobs:
       - name: Evaluate logic
         id: set-result
         run: |
-          # ✅ Change this to 'true' or 'false' as needed
-          echo "proceed=true" >> $GITHUB_ENV
-          echo "proceed=${{ env.proceed }}"
-        env:
-          proceed: true  # 👈 Yahan 'true' or 'false' set karo
-        outputs:
-          proceed: ${{ env.proceed }}
+          # Set the output value
+          echo "proceed=true" >> $GITHUB_OUTPUT  # 👈 Only this line is needed now
 
   approve:
     needs: evaluate
