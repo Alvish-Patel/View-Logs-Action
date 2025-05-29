@@ -1,8 +1,9 @@
 name: Deploy
 
 on:
+  push:
   workflow_dispatch:
-
+ 
 jobs:
   pre-approval-steps:
     runs-on: ubuntu-latest
@@ -20,31 +21,31 @@ jobs:
       - name: 📦 Set proceed flag
         id: set-var
         run: |
-          # Change this to simulate condition
+          # Change this value to true/false to test
           echo "proceed=false" >> $GITHUB_OUTPUT
 
   approve-and-complete:
     needs: pre-approval-steps
     runs-on: ubuntu-latest
+    environment:  # ✅ Moved here (job level)
+      name: manual-approval
+      # Only enforced if 'proceed == false'
+    if: needs.pre-approval-steps.outputs.proceed == 'false'
     steps:
-      - name: 🧠 Set approval condition
-        id: vars
-        run: echo "proceed=${{ needs.pre-approval-steps.outputs.proceed }}" >> $GITHUB_ENV
-
       - name: 🔐 Manual Approval Required
-        if: env.proceed == 'false'
-        environment:
-          name: manual-approval
         run: echo "⏸ Waiting for manual approval..."
 
+  continue-after-approval:
+    needs: [pre-approval-steps, approve-and-complete]
+    runs-on: ubuntu-latest
+    if: needs.pre-approval-steps.outputs.proceed == 'true' || needs.approve-and-complete.result == 'success'
+    steps:
       - name: ✅ Proceeding with deployment
         run: echo "🚀 Starting deployment..."
 
       - name: 🔔 Echo Message 1
         run: echo "Message 1"
-
       - name: 🔔 Echo Message 2
         run: echo "Message 2"
-
       - name: 🔔 Echo Message 3
         run: echo "Message 3"
