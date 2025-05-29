@@ -13,12 +13,12 @@ jobs:
       - name: Set proceed flag
         id: set-var
         run: |
-          echo "proceed=true" >> $GITHUB_OUTPUT  # 👈 true or false yahan change karo
+          echo "proceed=false" >> $GITHUB_OUTPUT 
 
   approve:
     runs-on: ubuntu-latest
     needs: evaluate
-    if: needs.evaluate.outputs.proceed == 'false'  # 👈 sirf false par approval chahiye
+    if: needs.evaluate.outputs.proceed == 'false'
     environment:
       name: manual-approval
     steps:
