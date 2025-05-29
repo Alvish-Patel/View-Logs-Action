@@ -22,7 +22,7 @@ jobs:
         id: set-var
         run: |
           # Change this value to true/false to test
-          echo "proceed=false" >> $GITHUB_OUTPUT
+          echo "proceed=true" >> $GITHUB_OUTPUT
 
   approve-and-complete:
     needs: pre-approval-steps
