@@ -7,6 +7,8 @@ on:
 jobs:
   pre-approval-steps:
     runs-on: ubuntu-latest
+    outputs:
+      proceed: ${{ steps.set-var.outputs.proceed }}
     steps:
       - name: 🧾 Checkout code
         uses: actions/checkout@v3
@@ -16,31 +18,37 @@ jobs:
           echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
-  approve-and-complete:
+      - name: 📦 Set deployment condition
+        id: set-var
+        run: |
+          # Simulate a condition check (replace with your logic)
+          echo "proceed=true" >> $GITHUB_OUTPUT  # or false to test
+          
+          # Example: echo "proceed=false" >> $GITHUB_OUTPUT
+
+  conditional-approval:
     needs: pre-approval-steps
+    if: needs.pre-approval-steps.outputs.proceed == 'false'
     runs-on: ubuntu-latest
     environment:
-      name: manual-approval
-    env:
-      PROCEED: true 
+      name: manual-approval   # must have "required reviewers"
     steps:
-      - name: 🚦 Check if deployment is allowed
-        run: |
-          if [ "$PROCEED" != "true" ]; then
-            echo "❌ Deployment not approved. Exiting..."
-            exit 1
-          fi
+      - name: 🔐 Manual Approval Required
+        run: echo "⚠️ Approval required due to condition being false."
 
-      - name: ✅ Request successfully Accepted
-        run: echo "✅ Build approved and completed successfully!"
+  approve-and-complete:
+    needs: [pre-approval-steps, conditional-approval]
+    if: needs.pre-approval-steps.outputs.proceed == 'true' || always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: ✅ Request Accepted
+        run: echo "✅ Build approved and continuing..."
 
-      - name: 🔔 Step 1
-        run: echo "🔔 This is message 1 after approval"
+      - name: 🔔 Message 1
+        run: echo "🔔 Message 1 after approval"
 
-      - name: 🔔 Step 2
-        run: echo "🔔 This is message 2 after approval"
+      - name: 🔔 Message 2
+        run: echo "🔔 Message 2 after approval"
 
-      - name: 🔔 Step 3
-        run: echo "🔔 This is message 3 after approval"
-
-  
+      - name: 🔔 Message 3
+        run: echo "🔔 Message 3 after approval"
