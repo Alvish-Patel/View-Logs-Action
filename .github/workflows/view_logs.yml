@@ -27,7 +27,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: evaluate  # 👈 sirf evaluate pe depend karo
+    needs: evaluate
     if: needs.evaluate.outputs.proceed == 'true' || needs.approve.result == 'success'
     steps:
       - name: Deploy step
