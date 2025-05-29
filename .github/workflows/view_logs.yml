@@ -1,7 +1,6 @@
 name: Deploy
 
 on:
-  push:
   workflow_dispatch:
 
 jobs:
@@ -18,37 +17,34 @@ jobs:
           echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
-      - name: 📦 Set deployment condition
+      - name: 📦 Set condition for deployment
         id: set-var
         run: |
-          # Simulate a condition check (replace with your logic)
-          echo "proceed=true" >> $GITHUB_OUTPUT  # or false to test
-          
-          # Example: echo "proceed=false" >> $GITHUB_OUTPUT
+          echo "proceed=false" >> $GITHUB_OUTPUT  # Simulate condition check
 
   conditional-approval:
     needs: pre-approval-steps
     if: needs.pre-approval-steps.outputs.proceed == 'false'
     runs-on: ubuntu-latest
     environment:
-      name: manual-approval   # must have "required reviewers"
+      name: manual-approval  # GitHub will pause here for approval
     steps:
-      - name: 🔐 Manual Approval Required
-        run: echo "⚠️ Approval required due to condition being false."
+      - name: ⏸️ Waiting for Manual Approval
+        run: echo "Waiting for approval... Please approve this environment to continue."
 
   approve-and-complete:
     needs: [pre-approval-steps, conditional-approval]
-    if: needs.pre-approval-steps.outputs.proceed == 'true' || always()
+    if: always() && (needs.pre-approval-steps.outputs.proceed == 'true' || needs.conditional-approval.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: ✅ Request Accepted
         run: echo "✅ Build approved and continuing..."
 
-      - name: 🔔 Message 1
-        run: echo "🔔 Message 1 after approval"
+      - name: 🔔 Echo Message 1
+        run: echo "Message 1"
 
-      - name: 🔔 Message 2
-        run: echo "🔔 Message 2 after approval"
+      - name: 🔔 Echo Message 2
+        run: echo "Message 2"
 
-      - name: 🔔 Message 3
-        run: echo "🔔 Message 3 after approval"
+      - name: 🔔 Echo Message 3
+        run: echo "Message 3"
