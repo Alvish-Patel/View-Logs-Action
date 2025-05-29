@@ -17,7 +17,7 @@ jobs:
         id: set-proceed
         run: |
           # Change this to true/false as needed
-          echo "proceed=false" >> $GITHUB_OUTPUT
+          echo "proceed=true" >> $GITHUB_OUTPUT
 
   approve:
     runs-on: ubuntu-latest
