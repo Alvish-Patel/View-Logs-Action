@@ -20,34 +20,31 @@ jobs:
       - name: 📦 Set proceed flag
         id: set-var
         run: |
-          # Simulate logic
-          echo "proceed=true" >> $GITHUB_OUTPUT  # change to false to test approval
-
-  conditional-approval:
-    needs: pre-approval-steps
-    if: needs.pre-approval-steps.outputs.proceed == 'false'
-    runs-on: ubuntu-latest
-    environment:
-      name: manual-approval
-    steps:
-      - name: ⏸ Manual approval needed
-        run: echo "Waiting for manual approval..."
+          # Change this to simulate condition
+          echo "proceed=false" >> $GITHUB_OUTPUT
 
   approve-and-complete:
-    needs: 
-      - pre-approval-steps
-      - conditional-approval
-    if: |
-      needs.pre-approval-steps.outputs.proceed == 'true' || 
-      (needs.pre-approval-steps.outputs.proceed == 'false' && needs.conditional-approval.result == 'success')
+    needs: pre-approval-steps
     runs-on: ubuntu-latest
     steps:
-      - name: ✅ Approval Received or Not Needed
-        run: echo "✅ Proceeding with deploy..."
+      - name: 🧠 Set approval condition
+        id: vars
+        run: echo "proceed=${{ needs.pre-approval-steps.outputs.proceed }}" >> $GITHUB_ENV
+
+      - name: 🔐 Manual Approval Required
+        if: env.proceed == 'false'
+        environment:
+          name: manual-approval
+        run: echo "⏸ Waiting for manual approval..."
+
+      - name: ✅ Proceeding with deployment
+        run: echo "🚀 Starting deployment..."
 
       - name: 🔔 Echo Message 1
         run: echo "Message 1"
+
       - name: 🔔 Echo Message 2
         run: echo "Message 2"
+
       - name: 🔔 Echo Message 3
         run: echo "Message 3"
