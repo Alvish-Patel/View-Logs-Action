@@ -9,42 +9,38 @@ jobs:
     outputs:
       proceed: ${{ steps.set-var.outputs.proceed }}
     steps:
-      - name: 🧾 Checkout code
-        uses: actions/checkout@v3
-
-      - name: 🔐 Save private key to file
-        run: |
-          echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
-
-      - name: 📦 Set condition for deployment
+      - name: Set proceed flag
         id: set-var
         run: |
-          echo "proceed=false" >> $GITHUB_OUTPUT  # Simulate condition check
+          # Simulate a failing condition
+          echo "proceed=false" >> $GITHUB_OUTPUT
 
   conditional-approval:
     needs: pre-approval-steps
     if: needs.pre-approval-steps.outputs.proceed == 'false'
     runs-on: ubuntu-latest
     environment:
-      name: manual-approval  # GitHub will pause here for approval
+      name: manual-approval  # 🔒 Popup comes from this line
     steps:
-      - name: ⏸️ Waiting for Manual Approval
-        run: echo "Waiting for approval... Please approve this environment to continue."
+      - name: ⏸ Waiting for Approval
+        run: echo "Paused: Please approve this job in GitHub Actions UI."
 
   approve-and-complete:
     needs: [pre-approval-steps, conditional-approval]
-    if: always() && (needs.pre-approval-steps.outputs.proceed == 'true' || needs.conditional-approval.result == 'success')
+    if: always() && (
+          needs.pre-approval-steps.outputs.proceed == 'true' || 
+          needs.conditional-approval.result == 'success'
+        )
     runs-on: ubuntu-latest
     steps:
-      - name: ✅ Request Accepted
-        run: echo "✅ Build approved and continuing..."
+      - name: ✅ Approval Received
+        run: echo "✅ Continuing after approval..."
 
-      - name: 🔔 Echo Message 1
-        run: echo "Message 1"
+      - name: 🔔 Message 1
+        run: echo "🔔 Message 1"
 
-      - name: 🔔 Echo Message 2
-        run: echo "Message 2"
+      - name: 🔔 Message 2
+        run: echo "🔔 Message 2"
 
-      - name: 🔔 Echo Message 3
-        run: echo "Message 3"
+      - name: 🔔 Message 3
+        run: echo "🔔 Message 3"
