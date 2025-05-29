@@ -42,5 +42,3 @@ jobs:
       - name: 🔔 Message 2
         run: echo "🔔 Message 2"
 
-      - name: 🔔 Message 3
-        run: echo "🔔 Message 3"
