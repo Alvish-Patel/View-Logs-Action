@@ -20,8 +20,8 @@ jobs:
       - name: 📦 Set proceed flag
         id: set-var
         run: |
-          # Simulate a false condition for testing
-          echo "proceed=false" >> $GITHUB_OUTPUT
+          # Simulate logic
+          echo "proceed=true" >> $GITHUB_OUTPUT  # change to false to test approval
 
   conditional-approval:
     needs: pre-approval-steps
@@ -30,22 +30,24 @@ jobs:
     environment:
       name: manual-approval
     steps:
-      - name: 🔐 Waiting for Approval
+      - name: ⏸ Manual approval needed
         run: echo "Waiting for manual approval..."
 
   approve-and-complete:
-    needs: [pre-approval-steps, conditional-approval]
-    if: always() && (needs.pre-approval-steps.outputs.proceed == 'true' || needs.conditional-approval.result == 'success')
+    needs: 
+      - pre-approval-steps
+      - conditional-approval
+    if: |
+      needs.pre-approval-steps.outputs.proceed == 'true' || 
+      (needs.pre-approval-steps.outputs.proceed == 'false' && needs.conditional-approval.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - name: ✅ Approval Received
-        run: echo "✅ Continuing after approval..."
+      - name: ✅ Approval Received or Not Needed
+        run: echo "✅ Proceeding with deploy..."
 
       - name: 🔔 Echo Message 1
         run: echo "Message 1"
-
       - name: 🔔 Echo Message 2
         run: echo "Message 2"
-
       - name: 🔔 Echo Message 3
         run: echo "Message 3"
