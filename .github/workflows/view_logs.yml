@@ -1,4 +1,4 @@
-name: 🔍 View Logs from EC2
+name: Deploy
 
 on:
   push:
@@ -20,7 +20,27 @@ jobs:
     needs: pre-approval-steps
     runs-on: ubuntu-latest
     environment:
-      name: manual-approval 
+      name: manual-approval
+    env:
+      PROCEED: true 
     steps:
-      - name: ✅ Final success message
+      - name: 🚦 Check if deployment is allowed
+        run: |
+          if [ "$PROCEED" != "true" ]; then
+            echo "❌ Deployment not approved. Exiting..."
+            exit 1
+          fi
+
+      - name: ✅ Request successfully Accepted
         run: echo "✅ Build approved and completed successfully!"
+
+      - name: 🔔 Step 1
+        run: echo "🔔 This is message 1 after approval"
+
+      - name: 🔔 Step 2
+        run: echo "🔔 This is message 2 after approval"
+
+      - name: 🔔 Step 3
+        run: echo "🔔 This is message 3 after approval"
+
+  
