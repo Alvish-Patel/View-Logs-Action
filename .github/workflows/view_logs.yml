@@ -8,33 +8,38 @@ jobs:
   evaluate:
     runs-on: ubuntu-latest
     outputs:
-      proceed: ${{ steps.set-var.outputs.proceed }}
+      proceed: ${{ steps.set-proceed.outputs.proceed }}
     steps:
       - name: 🧾 Checkout code
         uses: actions/checkout@v3
 
       - name: 📦 Set proceed flag
-        id: set-var
+        id: set-proceed
         run: |
+          # Change this to true/false as needed
           echo "proceed=true" >> $GITHUB_OUTPUT
 
-  maybe-approve:
+  approve:
+    runs-on: ubuntu-latest
     needs: evaluate
     if: needs.evaluate.outputs.proceed == 'false'
-    runs-on: ubuntu-latest
     environment:
       name: manual-approval
     steps:
-      - name: 🛑 Awaiting Manual Approval
-        run: echo "⏳ Waiting for manual approval..."
+      - name: ⏸ Waiting for Manual Approval
+        run: echo "⏳ Manual approval in progress..."
 
   deploy:
-    needs: [evaluate, maybe-approve]
-    if: needs.evaluate.outputs.proceed == 'true' || needs.maybe-approve.result == 'success'
     runs-on: ubuntu-latest
+    needs: 
+      - evaluate
+      - approve  # required only if manual approval ran
+    if: |
+      needs.evaluate.outputs.proceed == 'true' || 
+      needs.approve.result == 'success'
     steps:
-      - name: ✅ Proceeding with deployment
-        run: echo "🚀 Starting deployment..."
+      - name: ✅ Starting Deployment
+        run: echo "🚀 Proceeding with deployment..."
 
       - name: 🔔 Echo Message 1
         run: echo "Message 1"
