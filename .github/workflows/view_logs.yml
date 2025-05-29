@@ -16,8 +16,7 @@ jobs:
       - name: 📦 Set proceed flag
         id: set-var
         run: |
-          # 👇 Just change this to true/false
-          echo "proceed=false" >> $GITHUB_OUTPUT
+          echo "proceed=true" >> $GITHUB_OUTPUT
 
   maybe-approve:
     needs: evaluate
