@@ -3,45 +3,30 @@ name: Deploy
 on:
   push:
   workflow_dispatch:
- 
+
 jobs:
-  pre-approval-steps:
+  deploy:
     runs-on: ubuntu-latest
-    outputs:
-      proceed: ${{ steps.set-var.outputs.proceed }}
+    environment: ${{ steps.set-var.outputs.env }}  # Dynamically require approval only if needed
     steps:
       - name: 🧾 Checkout code
         uses: actions/checkout@v3
 
-      - name: 🔐 Save private key to file
-        run: |
-          echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
-          chmod 600 private_key.pem
-
       - name: 📦 Set proceed flag
         id: set-var
         run: |
-          # Change this value to true/false to test
-          echo "proceed=true" >> $GITHUB_OUTPUT
+          # 👇 Just change this to true/false as needed
+          proceed=true
 
-  approve-and-complete:
-    needs: pre-approval-steps
-    runs-on: ubuntu-latest
-    environment:  # ✅ Moved here (job level)
-      name: manual-approval
-      # Only enforced if 'proceed == false'
-    if: needs.pre-approval-steps.outputs.proceed == 'false'
-    steps:
-      - name: 🔐 Manual Approval Required
-        run: echo "⏸ Waiting for manual approval..."
+          if [ "$proceed" = "false" ]; then
+            echo "env=manual-approval" >> $GITHUB_OUTPUT
+          else
+            echo "env=" >> $GITHUB_OUTPUT
+          fi
+          echo "proceed=$proceed" >> $GITHUB_OUTPUT
 
-  continue-after-approval:
-    needs: [pre-approval-steps, approve-and-complete]
-    runs-on: ubuntu-latest
-    if: needs.pre-approval-steps.outputs.proceed == 'true' || needs.approve-and-complete.result == 'success'
-    steps:
-      - name: ✅ Proceeding with deployment
-        run: echo "🚀 Starting deployment..."
+      - name: ✅ Proceeding after optional approval
+        run: echo "🚀 Deployment continues..."
 
       - name: 🔔 Echo Message 1
         run: echo "Message 1"
