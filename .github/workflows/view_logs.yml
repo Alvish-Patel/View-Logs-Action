@@ -30,7 +30,7 @@ jobs:
     environment:
       name: manual-approval
     steps:
-      - name: ⏸ Waiting for Approval
+      - name: 🔐 Waiting for Approval
         run: echo "Waiting for manual approval..."
 
   approve-and-complete:
