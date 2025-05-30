@@ -13,29 +13,22 @@ jobs:
       - name: Set proceed flag
         id: set-var
         run: |
-          # Replace this logic with your own condition
+          # 🔁 Change true/false based on your logic
           echo "proceed=true" >> $GITHUB_OUTPUT
 
   approve:
     runs-on: ubuntu-latest
     needs: evaluate
+    if: needs.evaluate.outputs.proceed == 'false'  # ✅ Only run when approval is needed
     environment:
-      name: manual-approval  # 👈 must be a protected environment in GitHub
+      name: manual-approval  # 🔐 Must be a protected environment in GitHub
     outputs:
       approved: ${{ steps.set-output.outputs.approved }}
     steps:
-      - name: Conditional approval
+      - name: Wait for manual approval
         id: set-output
         run: |
-          if [ "${{ needs.evaluate.outputs.proceed }}" == "true" ]; then
-            echo "✅ Skipping manual approval"
-            echo "approved=true" >> $GITHUB_OUTPUT
-          else
-            echo "🛑 Waiting for manual approval..."
-            # This message is symbolic; actual approval is triggered by environment protection
-            echo "approved=true" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
+          echo "approved=true" >> $GITHUB_OUTPUT
 
   deploy:
     runs-on: ubuntu-latest
