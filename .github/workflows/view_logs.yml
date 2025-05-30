@@ -13,22 +13,31 @@ jobs:
       - name: Set proceed flag
         id: set-var
         run: |
-          echo "proceed=true" >> $GITHUB_OUTPUT  
+          # Logic to decide whether to proceed
+          echo "proceed=false" >> $GITHUB_OUTPUT  # change this as needed
 
   approve:
     runs-on: ubuntu-latest
     needs: evaluate
-    if: needs.evaluate.outputs.proceed == 'false' 
     environment:
-      name: manual-approval
+      name: manual-approval  # Must be protected in repo settings
+    outputs:
+      approved: ${{ steps.set-output.outputs.approved }}
     steps:
-      - name: Wait for manual approval
-        run: echo "Waiting for manual approval..."
+      - name: Set output based on approval need
+        id: set-output
+        run: |
+          if [ "${{ needs.evaluate.outputs.proceed }}" == "true" ]; then
+            echo "approved=true" >> $GITHUB_OUTPUT
+          else
+            echo "Waiting for manual approval..."
+            echo "approved=true" >> $GITHUB_OUTPUT
+        shell: bash
 
   deploy:
     runs-on: ubuntu-latest
-    needs: evaluate 
-    if: needs.evaluate.outputs.proceed == 'true' || needs.approve.result == 'success'
+    needs: [evaluate, approve]
+    if: needs.evaluate.outputs.proceed == 'true' || needs.approve.outputs.approved == 'true'
     steps:
       - name: Deploy step
         run: echo "🚀 Deploying..."
