@@ -14,7 +14,7 @@ jobs:
         id: set-var
         run: |
           # Replace this logic with your own condition
-          echo "proceed=false" >> $GITHUB_OUTPUT
+          echo "proceed=true" >> $GITHUB_OUTPUT
 
   approve:
     runs-on: ubuntu-latest
