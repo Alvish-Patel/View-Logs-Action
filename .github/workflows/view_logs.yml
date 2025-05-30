@@ -14,7 +14,7 @@ jobs:
         id: set-var
         run: |
           # Yahan apni logic lagao
-          echo "proceed=false" >> $GITHUB_OUTPUT   # change true/false for testing
+          echo "proceed=true" >> $GITHUB_OUTPUT   # change true/false for testing
 
   approve:
     runs-on: ubuntu-latest
