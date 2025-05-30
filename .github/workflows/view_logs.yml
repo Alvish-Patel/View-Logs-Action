@@ -1,8 +1,8 @@
 name: Deploy
 
 on:
-  workflow_dispatch:
   push:
+  workflow_dispatch:
 
 jobs:
   evaluate:
@@ -13,26 +13,26 @@ jobs:
       - name: Set proceed flag (true or false)
         id: set-proceed
         run: |
-          echo "proceed=true" >> $GITHUB_OUTPUT  # change to true/false as needed
+          # 👇 Change to false if you want to test manual approval
+          echo "proceed=true" >> "$GITHUB_OUTPUT"
 
   approve:
+    runs-on: ubuntu-latest
     needs: evaluate
     if: needs.evaluate.outputs.proceed == 'false'
-    runs-on: ubuntu-latest
     environment:
       name: manual-approval
-      # will pause for approval in GitHub UI
-    outputs:
-      approved: ${{ steps.approval.outputs.approved }}
     steps:
       - name: Wait for manual approval
-        id: approval
-        run: echo "approved=true" >> $GITHUB_OUTPUT
+        run: echo "🛑 Waiting for manual approval..."
 
   deploy:
-    needs: [evaluate, approve]
-    if: needs.evaluate.outputs.proceed == 'true' || needs.approve.outputs.approved == 'true'
     runs-on: ubuntu-latest
+    needs: [evaluate, approve]
+    if: needs.evaluate.outputs.proceed == 'true' || needs.approve.result == 'success'
     steps:
-      - name: 🚀 Deploying the application
-        run: echo "Deploying... ✅"
+      - name: Deploy Step
+        run: echo "🚀 Deploying..."
+
+      - name: Final Step
+        run: echo "✅ Done!"
