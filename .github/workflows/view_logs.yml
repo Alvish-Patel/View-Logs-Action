@@ -13,7 +13,7 @@ jobs:
       - name: Set proceed flag (true or false)
         id: set-proceed
         run: |
-          echo "proceed=false" >> $GITHUB_OUTPUT  # change to true/false as needed
+          echo "proceed=true" >> $GITHUB_OUTPUT  # change to true/false as needed
 
   approve:
     needs: evaluate
