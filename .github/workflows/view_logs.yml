@@ -13,7 +13,7 @@ jobs:
       - name: Set proceed flag
         id: set-proceed
         run: |
-          echo "proceed=true" >> "$GITHUB_OUTPUT"
+          echo "proceed=false" >> "$GITHUB_OUTPUT"
 
   deploy:
     runs-on: ubuntu-latest
