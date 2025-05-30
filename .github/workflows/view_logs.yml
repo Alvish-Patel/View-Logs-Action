@@ -13,32 +13,42 @@ jobs:
       - name: Set proceed flag
         id: set-var
         run: |
-          # Yahan apni logic lagao
-          echo "proceed=true" >> $GITHUB_OUTPUT   # change true/false for testing
+          echo "proceed=false" >> $GITHUB_OUTPUT   # Set true or false as needed for testing
 
   approve:
     runs-on: ubuntu-latest
     needs: evaluate
-    if: needs.evaluate.outputs.proceed == 'false'   # approval only when proceed is false
+    if: needs.evaluate.outputs.proceed == 'false'
     environment:
       name: manual-approval
     outputs:
       approved: ${{ steps.set-output.outputs.approved }}
     steps:
-      - name: Wait for manual approval
+      - name: Manual Approval
         id: set-output
-        run: |
-          echo "approved=true" >> $GITHUB_OUTPUT
+        run: echo "approved=true" >> $GITHUB_OUTPUT
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [evaluate, approve]
-    if: |
-      needs.evaluate.outputs.proceed == 'true' || 
-      (needs.evaluate.outputs.proceed == 'false' && needs.approve.outputs.approved == 'true')
+    needs: [evaluate]
     steps:
-      - name: Deploy step
+      - name: Check approval or proceed flag
+        id: should-deploy
+        run: |
+          echo "Evaluating whether to deploy..."
+          if [ "${{ needs.evaluate.outputs.proceed }}" == "true" ]; then
+            echo "deploy=true" >> $GITHUB_OUTPUT
+          else
+            # Get approval output via GitHub API
+            APPROVED=$(gh run view ${{ github.run_id }} --json jobs -q '.jobs[] | select(.name=="approve") | .steps[] | select(.name=="Manual Approval") | .outputs.approved' || echo "false")
+            echo "deploy=${APPROVED}" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy
+        if: steps.should-deploy.outputs.deploy == 'true'
         run: echo "🚀 Deploying..."
 
       - name: Another step
+        if: steps.should-deploy.outputs.deploy == 'true'
         run: echo "✅ Done!"
