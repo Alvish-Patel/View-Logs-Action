@@ -10,11 +10,18 @@ jobs:
     outputs:
       proceed: ${{ steps.set-proceed.outputs.proceed }}
     steps:
-      - name: Set proceed flag (true or false)
+      - name: Set proceed flag
         id: set-proceed
         run: |
-          # 👇 Change to false if you want to test manual approval
           echo "proceed=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: evaluate
+    if: needs.evaluate.outputs.proceed == 'true'
+    steps:
+      - name: 🚀 Auto Deploy
+        run: echo "Auto deploy since proceed is true."
 
   approve:
     runs-on: ubuntu-latest
@@ -23,16 +30,13 @@ jobs:
     environment:
       name: manual-approval
     steps:
-      - name: Wait for manual approval
-        run: echo "🛑 Waiting for manual approval..."
+      - name: ✅ Approved manually
+        run: echo "Approved manually"
 
-  deploy:
+  deploy_after_approval:
     runs-on: ubuntu-latest
-    needs: [evaluate, approve]
-    if: needs.evaluate.outputs.proceed == 'true' || needs.approve.result == 'success'
+    needs: approve
+    if: needs.evaluate.outputs.proceed == 'false' && needs.approve.result == 'success'
     steps:
-      - name: Deploy Step
-        run: echo "🚀 Deploying..."
-
-      - name: Final Step
-        run: echo "✅ Done!"
+      - name: 🚀 Deploy after approval
+        run: echo "Deploying after manual approval."
